@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Family Insurance Agent</title>
+<style>
+  :root { --bg:#f7f7f5; --card:#fff; --fg:#1c1c1a; --muted:#6b6b66; --line:#e2e2dc; --accent:#1f6f5c; --warn:#fff4d6; --warnfg:#7a5600; --bad:#b3261e; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#161614; --card:#1f1f1c; --fg:#ecece6; --muted:#9a9a92; --line:#33332e; --accent:#52b69a; --warn:#3a2f10; --warnfg:#f0cf75; --bad:#f2807a; } }
+  * { box-sizing:border-box } body { margin:0; font:15px/1.5 system-ui,sans-serif; background:var(--bg); color:var(--fg) }
+  header { padding:14px 20px; border-bottom:1px solid var(--line); display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between }
+  h1 { font-size:17px; margin:0 } main { max-width:900px; margin:0 auto; padding:16px }
+  nav button { background:none; border:0; padding:8px 14px; font:inherit; color:var(--muted); cursor:pointer; border-bottom:2px solid transparent }
+  nav button.on { color:var(--fg); border-color:var(--accent) }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px; margin:12px 0 }
+  input, select, textarea { font:inherit; padding:8px 10px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--fg); max-width:100% }
+  textarea { width:100%; min-height:140px } .q { width:100% }
+  button.p { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:8px 16px; font:inherit; cursor:pointer }
+  button.s { background:none; border:1px solid var(--line); color:var(--fg); border-radius:8px; padding:6px 12px; font:inherit; cursor:pointer }
+  .muted { color:var(--muted); font-size:13px } .chip { cursor:pointer; border:1px solid var(--line); border-radius:99px; padding:3px 10px; font-size:13px; margin:2px; display:inline-block }
+  .warn { background:var(--warn); color:var(--warnfg); border-radius:8px; padding:10px 12px } .err { color:var(--bad) }
+  details { margin-top:8px } summary { cursor:pointer } .cite { border-left:3px solid var(--accent); padding:2px 10px; margin:8px 0 }
+  table { width:100%; border-collapse:collapse; font-size:13px } td,th { text-align:left; padding:5px 6px; border-bottom:1px solid var(--line) }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center }
+</style>
+</head>
+<body>
+<header>
+  <h1>🛡️ Family Insurance Agent</h1>
+  <div class="row">
+    <input id="akey" type="password" placeholder="Access key" size="14" autocomplete="off">
+    <input id="rkey" type="password" placeholder="Reviewer key" size="14" autocomplete="off">
+  </div>
+</header>
+<main>
+  <nav><button data-t="ask" class="on">Ask</button><button data-t="review">Reviewer panel</button><button data-t="audit">Audit log</button></nav>
+
+  <section id="ask">
+    <div class="card">
+      <div class="row">
+        <select id="user"><option>Sathwika</option><option>Dad</option><option>Mom</option><option>Arjun</option><option>Grandpa</option></select>
+        <input id="question" class="q" style="flex:1;min-width:220px" placeholder="Which policies cover Mom?">
+        <button class="p" id="askbtn">Ask</button>
+      </div>
+      <div style="margin-top:8px" id="chips"></div>
+    </div>
+    <div id="result"></div>
+  </section>
+
+  <section id="review" hidden><div id="pending"></div><button class="s" id="refresh">Refresh</button></section>
+  <section id="audit" hidden><div class="card" id="chain"></div><div class="card" style="overflow-x:auto"><table id="audittbl"></table></div></section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const md = s => esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+for (const k of ['akey','rkey']) { $(k).value = sessionStorage.getItem(k) || ''; $(k).oninput = () => sessionStorage.setItem(k, $(k).value); }
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, { ...opts, headers: { 'Content-Type':'application/json', 'X-Access-Key':$('akey').value, 'X-Reviewer-Key':$('rkey').value } });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(r.status === 401 ? 'Wrong or missing key (check the key boxes at the top).' : (body.detail || r.statusText));
+  return body;
+}
+
+document.querySelectorAll('nav button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('nav button').forEach(x => x.classList.toggle('on', x === b));
+  for (const s of ['ask','review','audit']) $(s).hidden = s !== b.dataset.t;
+  if (b.dataset.t === 'review') loadPending(); if (b.dataset.t === 'audit') loadAudit();
+});
+
+['Which policies cover Mom?', 'What is our total annual premium?', 'Which policies are due for renewal in the next 30 days?',
+ 'Which policy has the shortest waiting period for pre-existing diseases?', 'What is the room rent limit in the family floater?', "Is Mom's cancer covered?"]
+  .forEach(q => { const c = document.createElement('span'); c.className = 'chip'; c.textContent = q; c.onclick = () => { $('question').value = q; ask(); }; $('chips').append(c); });
+
+function cites(list) {
+  if (!list.length) return '';
+  return '<details><summary>Cited sources (' + list.length + ')</summary>' +
+    list.map(c => `<div class="cite"><b>[${esc(c.id)}] ${esc(c.policy)} - ${esc(c.title)}</b><br><span class="muted">${esc(c.text)}</span></div>`).join('') + '</details>';
+}
+
+async function ask() {
+  const q = $('question').value.trim(); if (q.length < 3) return;
+  $('result').innerHTML = '<div class="card muted">Thinking…</div>';
+  try {
+    const r = await api('/ask', { method:'POST', body: JSON.stringify({ user: $('user').value, question: q }) });
+    const meta = `<div class="muted">route <b>${esc(r.route)}</b> · confidence ${r.confidence} · ${r.timings_ms.total} ms · id <code>${esc(r.query_id)}</code></div>`;
+    $('result').innerHTML = r.needs_review
+      ? `<div class="card">${meta}<div class="warn" style="margin-top:8px">${esc(r.message)}</div>
+         <p class="muted">A reviewer must approve it first. <button class="s" id="check">Check status</button></p><div id="late"></div></div>`
+      : `<div class="card">${meta}<p>${md(r.answer)}</p>${cites(r.citations)}</div>`;
+    if (r.needs_review) $('check').onclick = async () => {
+      const s = await api('/queries/' + r.query_id);
+      $('late').innerHTML = s.answer ? `<p><b>${esc(s.status)}</b></p><p>${md(s.answer)}</p>${cites(s.citations)}` : `<p class="muted">Status: ${esc(s.status)}</p>`;
+    };
+  } catch (e) { $('result').innerHTML = `<div class="card err">${esc(e.message)}</div>`; }
+}
+$('askbtn').onclick = ask; $('question').onkeydown = e => { if (e.key === 'Enter') ask(); };
+
+async function loadPending() {
+  try {
+    const items = await api('/reviews/pending');
+    $('pending').innerHTML = items.length ? '' : '<div class="card muted">No answers waiting for review.</div>';
+    for (const it of items) {
+      const d = document.createElement('div'); d.className = 'card';
+      d.innerHTML = `<b>#${it.review_id}</b> ${esc(it.user)} asked: <i>${esc(it.query)}</i>
+        <div class="muted">${esc(it.reasons.join('; '))} · confidence ${it.confidence}</div>
+        <textarea>${esc(it.draft_answer)}</textarea>
+        <details><summary>Retrieved chunks &amp; graph queries</summary><pre class="muted" style="white-space:pre-wrap">${esc(JSON.stringify({retrieved: it.retrieved, graph: it.graph}, null, 1))}</pre></details>
+        <div class="row" style="margin-top:8px"><input placeholder="Your name" value="reviewer" size="12">
+        <button class="p" data-d="approve">Approve</button><button class="s" data-d="edit">Approve with edits</button><button class="s" data-d="reject">Reject</button></div>`;
+      d.querySelectorAll('button[data-d]').forEach(b => b.onclick = async () => {
+        const [name] = d.querySelectorAll('input'); const ta = d.querySelector('textarea');
+        try { await api(`/reviews/${it.review_id}/decision`, { method:'POST', body: JSON.stringify({ reviewer: name.value || 'reviewer', decision: b.dataset.d, edited_answer: b.dataset.d === 'edit' ? ta.value : null }) }); loadPending(); }
+        catch (e) { alert(e.message); }
+      });
+      $('pending').append(d);
+    }
+  } catch (e) { $('pending').innerHTML = `<div class="card err">${esc(e.message)}</div>`; }
+}
+$('refresh').onclick = loadPending;
+
+async function loadAudit() {
+  try {
+    const v = await api('/audit-verify');
+    $('chain').innerHTML = v.ok ? '✅ Audit hash chain verified (no edited or deleted records).' : '<span class="err">❌ Audit chain broken at ' + esc(JSON.stringify(v.broken_at)) + '</span>';
+    const rows = await api('/audit?limit=100');
+    $('audittbl').innerHTML = '<tr><th>Time</th><th>User</th><th>Query</th><th>Route</th><th>Status</th></tr>' +
+      rows.map(r => `<tr><td>${esc(r.ts)}</td><td>${esc(r.user)}</td><td>${esc(r.query)}</td><td>${esc(r.route)}</td><td>${esc(r.status)}</td></tr>`).join('');
+  } catch (e) { $('chain').innerHTML = `<span class="err">${esc(e.message)}</span>`; }
+}
+</script>
+</body>
+</html>

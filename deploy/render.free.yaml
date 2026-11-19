@@ -1,0 +1,16 @@
+# Free-tier variant (demo only). No disk => the audit log and review queue reset on every redeploy/restart,
+# and the service sleeps after idle time. Do not use for real family data. Use via:
+#   Render dashboard > Blueprint > "Blueprint file path" = deploy/render.free.yaml
+services:
+  - type: web
+    name: family-insurance-agent-demo
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: FIA_ACCESS_KEY
+        generateValue: true
+      - key: FIA_REVIEWER_KEY
+        generateValue: true

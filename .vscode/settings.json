@@ -1,0 +1,11 @@
+{
+  "python.envFile": "${workspaceFolder}/.env",
+  "python.analysis.extraPaths": ["${workspaceFolder}/src"],
+  "python.testing.pytestEnabled": true,
+  "python.testing.unittestEnabled": false,
+  "python.testing.pytestArgs": ["tests"],
+  "terminal.integrated.env.windows": { "PYTHONPATH": "${workspaceFolder}\\src" },
+  "terminal.integrated.env.osx": { "PYTHONPATH": "${workspaceFolder}/src" },
+  "terminal.integrated.env.linux": { "PYTHONPATH": "${workspaceFolder}/src" },
+  "files.exclude": { "**/__pycache__": true, "**/.pytest_cache": true }
+}

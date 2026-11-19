@@ -1,0 +1,3 @@
+# Optional heavy profile: sentence-transformers (PyTorch). Needs ~1.5-2 GB RAM. Set FIA_EMBEDDER=st FIA_RERANKER=cross
+-r requirements.txt
+sentence-transformers>=3.0

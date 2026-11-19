@@ -1,0 +1,23 @@
+# Render Blueprint: New + > Blueprint > connect this repo.
+# A persistent disk (for the audit log + review queue) needs a paid instance type.
+services:
+  - type: web
+    name: family-insurance-agent
+    runtime: docker
+    plan: starter            # ~512 MB RAM; if the service is OOM-killed, move to standard (see README)
+    healthCheckPath: /health
+    autoDeployTrigger: commit
+    disk:
+      name: fia-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: FIA_ACCESS_KEY      # Render generates these; read them in Dashboard > Environment
+        generateValue: true
+      - key: FIA_REVIEWER_KEY
+        generateValue: true
+      - key: FIA_STORE_DIR
+        value: /data
+      # ---- add in the Dashboard (Environment) after the first deploy -----------------------
+      # LLM (free options in README):  FIA_LLM_BASE_URL, FIA_LLM_API_KEY, FIA_LLM_MODEL
+      # Graph (optional, else in-memory graph):  NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD

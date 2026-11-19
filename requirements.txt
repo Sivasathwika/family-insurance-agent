@@ -1,0 +1,12 @@
+# Core / production profile (no PyTorch): ONNX embeddings + reranker via fastembed. Fits small Render instances.
+langgraph>=0.2
+chromadb>=0.5
+rank-bm25>=0.2.2
+fastembed>=0.4
+neo4j>=5.20
+fastapi>=0.110
+uvicorn>=0.29
+pydantic>=2.6
+requests>=2.31
+numpy>=1.26
+anthropic>=0.40          # only used if ANTHROPIC_API_KEY is set; remove if you use a free OpenAI-compatible LLM

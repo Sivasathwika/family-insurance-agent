@@ -1,0 +1,38 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run web app (http://localhost:8000)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "fia.cli",
+      "args": ["serve"],
+      "envFile": "${workspaceFolder}/.env",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Ask a question (CLI)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "fia.cli",
+      "args": ["ask", "${input:question}"],
+      "envFile": "${workspaceFolder}/.env",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Run evaluation (hit@5 gate 85%)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "fia.cli",
+      "args": ["eval", "--gate", "0.85"],
+      "envFile": "${workspaceFolder}/.env",
+      "env": { "PYTHONPATH": "${workspaceFolder}/src" },
+      "console": "integratedTerminal"
+    }
+  ],
+  "inputs": [
+    { "id": "question", "type": "promptString", "description": "Your insurance question", "default": "Which policies cover Mom?" }
+  ]
+}
